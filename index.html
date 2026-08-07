@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>屋企日用品計算器</title>
+<style>
+:root{
+  --paper:oklch(0.977 0.014 82);
+  --paper-2:oklch(0.955 0.020 80);
+  --ink:oklch(0.29 0.024 62);
+  --ink-soft:oklch(0.50 0.028 62);
+  --ink-faint:oklch(0.64 0.024 66);
+  --line:oklch(0.876 0.022 76);
+  --line-soft:oklch(0.925 0.018 78);
+  --accent:oklch(0.575 0.148 44);
+  --accent-soft:oklch(0.93 0.045 60);
+  --alarm:oklch(0.505 0.205 27);
+  --alarm-tint:oklch(0.945 0.055 33);
+  --alarm-line:oklch(0.83 0.10 30);
+  --sans:"PingFang HK","PingFang TC","Noto Sans HK","Microsoft JhengHei","Hiragino Sans GB","Helvetica Neue",sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Songti TC","Source Han Serif HC",Georgia,serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.5;
+  color:var(--ink);
+  background:
+    radial-gradient(120% 60% at 85% -10%, oklch(0.955 0.038 66) 0%, transparent 62%),
+    radial-gradient(90% 50% at -10% 108%, oklch(0.955 0.030 120) 0%, transparent 58%),
+    var(--paper);
+  background-attachment:fixed;
+  min-height:100vh;
+}
+.sheet{
+  max-width:33rem;
+  margin:0 auto;
+  padding:clamp(18px,5vw,40px) clamp(14px,4vw,30px) 64px;
+}
+
+/* ── 頂部 ── */
+.masthead{margin:0 0 clamp(18px,5vw,26px)}
+h1{
+  font-weight:800;
+  font-size:clamp(1.5rem,7.2vw,2.05rem);
+  letter-spacing:-.015em;
+  line-height:1.14;
+  margin:0;
+}
+.tagline{
+  margin:7px 0 0;
+  font-size:.86rem;
+  color:var(--ink-soft);
+  text-wrap:balance;
+}
+
+/* ── 本月屋企使費（單據式） ── */
+.total{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  padding:14px 0 16px;
+  border-top:2px solid var(--ink);
+  border-bottom:1px solid var(--line);
+  margin-bottom:clamp(22px,6vw,34px);
+}
+.total-label{font-size:.9rem;font-weight:600;letter-spacing:.04em;white-space:nowrap}
+.total-leader{flex:1;min-width:12px;border-bottom:2px dotted var(--line);transform:translateY(-4px)}
+.total-amount{
+  font-family:var(--serif);
+  font-size:clamp(1.6rem,8.6vw,2.3rem);
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+
+/* ── 區塊標題 ── */
+.head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 12px;
+  font-size:.8rem;
+  font-weight:700;
+  letter-spacing:.14em;
+  color:var(--ink-soft);
+}
+.head::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* ── 入數表格 ── */
+form{display:grid;gap:13px}
+.field{display:grid;gap:5px}
+label{font-size:.82rem;font-weight:600;color:var(--ink-soft)}
+input[type=text],input[type=date]{
+  font:inherit;
+  font-size:1rem;
+  color:var(--ink);
+  background:oklch(0.995 0.008 84);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:11px 12px;
+  min-height:46px;
+  width:100%;
+  transition:border-color .18s cubic-bezier(.16,1,.3,1),background-color .18s;
+}
+input::placeholder{color:var(--ink-faint)}
+input:focus-visible,button:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+input:focus{border-color:var(--accent);background:#fff}
+input:disabled{background:var(--paper-2);color:var(--ink-faint);border-style:dashed}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* 買咗／用咗 */
+.seg{border:0;padding:0;margin:0;display:grid;gap:5px}
+.seg legend{padding:0;font-size:.82rem;font-weight:600;color:var(--ink-soft)}
+.seg-body{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg-body label{
+  display:flex;align-items:center;justify-content:center;
+  min-height:50px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:oklch(0.995 0.008 84);
+  font-size:1.02rem;font-weight:650;color:var(--ink-soft);
+  cursor:pointer;
+  transition:background-color .18s,color .18s,border-color .18s;
+}
+.seg-body input{position:absolute;opacity:0;pointer-events:none}
+.seg-body input:checked + span{color:inherit}
+.seg-body label:has(input:checked){
+  background:var(--ink);
+  border-color:var(--ink);
+  color:var(--paper);
+}
+.seg-body label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+
+.hint{margin:-4px 0 0;font-size:.78rem;color:var(--ink-faint)}
+.err{
+  margin:0;
+  font-size:.88rem;
+  font-weight:600;
+  color:var(--alarm);
+  background:var(--alarm-tint);
+  border-radius:8px;
+  padding:9px 11px;
+}
+.add{
+  font:inherit;font-size:1.05rem;font-weight:700;
+  min-height:52px;
+  border:0;border-radius:10px;
+  background:var(--accent);
+  color:oklch(0.99 0.01 80);
+  cursor:pointer;
+  letter-spacing:.06em;
+  transition:transform .18s cubic-bezier(.16,1,.3,1),filter .18s;
+}
+.add:hover{filter:brightness(1.06)}
+.add:active{transform:scale(.985)}
+
+/* ── 清單區 ── */
+.list{margin-top:clamp(26px,7vw,38px)}
+.empty{
+  margin:0;
+  padding:22px 2px 8px;
+  font-size:1.05rem;
+  font-weight:600;
+  color:var(--ink-soft);
+}
+ul{list-style:none;margin:0;padding:0}
+.item{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:baseline;
+  column-gap:10px;
+  row-gap:2px;
+  padding:15px 12px 14px;
+  margin-inline:-12px;
+  border-top:1px solid var(--line-soft);
+  border-radius:11px;
+}
+.item:first-child{border-top-color:var(--line)}
+.item-name{
+  font-size:1.08rem;font-weight:700;letter-spacing:.01em;
+  overflow-wrap:anywhere;
+}
+.item-spend{font-size:.85rem;color:var(--ink-soft);font-variant-numeric:tabular-nums;white-space:nowrap;justify-self:end}
+.item-left{
+  grid-column:1/-1;
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 9px;
+  margin-top:3px;
+}
+.left-label{font-size:.82rem;color:var(--ink-soft)}
+.left-num{
+  font-size:1.5rem;font-weight:750;line-height:1.1;
+  font-variant-numeric:tabular-nums;
+}
+.chip{
+  display:inline-flex;align-items:center;
+  height:26px;
+  padding:0 10px;
+  border-radius:999px;
+  background:transparent;
+  border:1px solid var(--alarm-line);
+  color:var(--alarm);
+  font-size:.82rem;font-weight:700;letter-spacing:.04em;
+  white-space:nowrap;
+  animation:chip-in .22s cubic-bezier(.16,1,.3,1) both;
+}
+.item-thresh{
+  grid-column:1/-1;
+  display:flex;align-items:center;gap:8px;
+  margin-top:9px;
+}
+.item-thresh label{font-size:.78rem;white-space:nowrap}
+.item-thresh input{width:5.4rem;min-height:44px;padding:9px;font-size:.95rem}
+
+.item.alarm{
+  background:var(--alarm-tint);
+  border:1px solid var(--alarm-line);
+  margin-block:9px;
+  padding:14px 12px 13px;
+}
+.item.alarm + .item{border-top-color:var(--line)}
+.item.alarm .item-name,.item.alarm .left-num,.item.alarm .left-label{color:var(--alarm)}
+.item.fresh{animation:fresh .9s cubic-bezier(.16,1,.3,1) both}
+
+/* ── 清空 ── */
+.danger{margin-top:clamp(30px,8vw,44px);padding-top:18px;border-top:1px solid var(--line)}
+.clear{
+  font:inherit;font-size:.95rem;font-weight:650;
+  min-height:46px;padding:0 16px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:9px;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:border-color .18s,color .18s;
+}
+.clear:hover{border-color:var(--alarm);color:var(--alarm)}
+.confirm{
+  display:grid;gap:11px;
+  padding:15px;
+  background:var(--alarm-tint);
+  border-radius:11px;
+  animation:chip-in .2s cubic-bezier(.16,1,.3,1) both;
+}
+.confirm p{margin:0;font-size:.94rem;font-weight:600;color:var(--alarm)}
+.confirm-btns{display:flex;gap:9px;flex-wrap:wrap}
+.confirm button{
+  font:inherit;font-size:.95rem;font-weight:700;
+  min-height:46px;padding:0 18px;
+  border-radius:9px;cursor:pointer;
+}
+#clearYes{background:var(--alarm);color:oklch(0.99 0.01 60);border:0}
+#clearNo{background:transparent;border:1px solid var(--alarm-line);color:var(--alarm)}
+
+@keyframes chip-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+@keyframes fresh{from{background:var(--accent-soft)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <header class="masthead">
+    <h1>屋企日用品計算器</h1>
+    <p class="tagline">入低買咗同用咗，唔使等到用晒先知。</p>
+  </header>
+
+  <section class="total">
+    <span class="total-label">本月屋企使費</span>
+    <span class="total-leader" aria-hidden="true"></span>
+    <span class="total-amount" id="monthTotal">$0.00</span>
+  </section>
+
+  <section>
+    <h2 class="head">加一筆紀錄</h2>
+    <form id="entryForm" novalidate autocomplete="off">
+      <div class="field">
+        <label for="fName">物品名</label>
+        <input id="fName" type="text" placeholder="例：廁紙">
+      </div>
+
+      <fieldset class="seg">
+        <legend>類型</legend>
+        <div class="seg-body">
+          <label><input type="radio" name="kind" value="buy" checked><span>買咗</span></label>
+          <label><input type="radio" name="kind" value="use"><span>用咗</span></label>
+        </div>
+      </fieldset>
+
+      <div class="pair">
+        <div class="field">
+          <label for="fQty">數量</label>
+          <input id="fQty" type="text" inputmode="decimal" placeholder="例：10">
+        </div>
+        <div class="field">
+          <label for="fAmount">金額（港幣）</label>
+          <input id="fAmount" type="text" inputmode="decimal" placeholder="例：45.00">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="fDate">日期</label>
+        <input id="fDate" type="date">
+      </div>
+
+      <p class="hint" id="amountHint">「用咗」唔使填金額</p>
+      <p class="err" id="formErr" role="alert" hidden></p>
+      <button class="add" type="submit">加入</button>
+    </form>
+  </section>
+
+  <section class="list">
+    <h2 class="head">屋企有咩</h2>
+    <p class="empty" id="emptyMsg">未有紀錄，加第一筆啦</p>
+    <ul id="itemList"></ul>
+  </section>
+
+  <section class="danger">
+    <button type="button" id="clearBtn" class="clear">清空全部紀錄</button>
+    <div class="confirm" id="clearConfirm" hidden>
+      <p>真係清空全部紀錄？清咗攞唔返。</p>
+      <div class="confirm-btns">
+        <button type="button" id="clearYes">係，清空</button>
+        <button type="button" id="clearNo">唔清</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ══ 儲存層：只存「發生過嘅事」，唔會另外存一個仲剩幾多嘅數 ══ */
+var RECORDS_KEY = 'household-ledger-records';
+var THRESHOLDS_KEY = 'household-ledger-thresholds';
+
+function loadRecords(){
+  try{
+    var raw = JSON.parse(localStorage.getItem(RECORDS_KEY));
+    return Array.isArray(raw) ? raw : [];
+  }catch(e){ return []; }
+}
+/* 存唔到（部機儲存位滿咗／私密模式）唔准靜靜雞當成功 */
+function saveRecords(records){
+  try{ localStorage.setItem(RECORDS_KEY, JSON.stringify(records)); return true; }
+  catch(e){ return false; }
+}
+function loadThresholds(){
+  try{
+    var raw = JSON.parse(localStorage.getItem(THRESHOLDS_KEY));
+    return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  }catch(e){ return {}; }
+}
+function saveThresholds(thresholds){
+  try{ localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds)); return true; }
+  catch(e){ return false; }
+}
+
+/* ══ 腦層：全部數由紀錄計返出嚟 ══ */
+
+/* 加完先四捨五入一次，唔好每筆各自 round */
+function roundTo2(n){
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+function formatHKD(n){
+  return '$' + roundTo2(n).toFixed(2);
+}
+
+/* 數量唔想見到長尾數；0.30000000000000004 呢類要收埋 */
+function formatQty(n){
+  return String(roundTo2(n));
+}
+
+/* 一個日期字串（YYYY-MM-DD）屬唔屬於指定嗰個月 */
+function monthKeyOf(dateText){
+  return String(dateText || '').slice(0, 7);
+}
+function currentMonthKey(now){
+  var d = now || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/* 每樣物品仲剩幾多＝買咗嘅數量減用咗嘅數量 */
+function calculateRemainingByItem(records){
+  /* 用 Object.create(null)：物品名叫「toString」呢類都唔會撞到 JS 內建嘢 */
+  var bought = Object.create(null), used = Object.create(null), result = Object.create(null);
+  records.forEach(function(r){
+    if(r.kind === 'buy'){ bought[r.name] = (bought[r.name] || 0) + r.qty; }
+    else{ used[r.name] = (used[r.name] || 0) + r.qty; }
+  });
+  Object.keys(bought).concat(Object.keys(used)).forEach(function(name){
+    result[name] = roundTo2((bought[name] || 0) - (used[name] || 0));
+  });
+  return result;
+}
+
+/* 本月屋企使費＝當月所有「買咗」金額加總；「用咗」唔計錢 */
+function calculateMonthlyExpenses(records, monthKey){
+  var total = 0;
+  records.forEach(function(r){
+    if(r.kind === 'buy' && monthKeyOf(r.date) === monthKey){ total += r.amount; }
+  });
+  return roundTo2(total);
+}
+
+/* 每樣物品本月使咗幾多錢 */
+function calculateMonthlySpendByItem(records, monthKey){
+  var sums = Object.create(null), result = Object.create(null);
+  records.forEach(function(r){
+    if(r.kind === 'buy' && monthKeyOf(r.date) === monthKey){
+      sums[r.name] = (sums[r.name] || 0) + r.amount;
+    }
+  });
+  Object.keys(sums).forEach(function(name){ result[name] = roundTo2(sums[name]); });
+  return result;
+}
+
+/* 紅字文字：邊界規則行先，未設低量門檻就永遠唔出紅字 */
+function warningTextFor(remaining, threshold){
+  if(threshold === null || threshold === undefined || threshold === '') return null;
+  if(remaining < 0) return '數對唔上';
+  if(remaining === 0) return '用完咗';
+  if(remaining <= threshold) return '就快用完';
+  return null;
+}
+
+/* ══ 介面層 ══ */
+var elTotal = document.getElementById('monthTotal');
+var elList = document.getElementById('itemList');
+var elEmpty = document.getElementById('emptyMsg');
+var elForm = document.getElementById('entryForm');
+var elName = document.getElementById('fName');
+var elQty = document.getElementById('fQty');
+var elAmount = document.getElementById('fAmount');
+var elDate = document.getElementById('fDate');
+var elErr = document.getElementById('formErr');
+var elClearBtn = document.getElementById('clearBtn');
+var elConfirm = document.getElementById('clearConfirm');
+
+var freshName = null; /* 啱啱加完嗰樣，畫面上閃一閃 */
+
+function todayText(){
+  var d = new Date();
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+function selectedKind(){
+  return document.querySelector('input[name="kind"]:checked').value;
+}
+
+/* 物品出場次序＝第一次入嗰筆嘅次序，唔會自己再排 */
+function itemNamesInOrder(records){
+  var seen = Object.create(null), names = [];
+  records.forEach(function(r){
+    if(!seen[r.name]){ seen[r.name] = true; names.push(r.name); }
+  });
+  return names;
+}
+
+function makeChip(text){
+  var chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.textContent = text;
+  return chip;
+}
+
+function makeRow(name, remaining, spend, threshold){
+  var li = document.createElement('li');
+  li.className = 'item' + (name === freshName ? ' fresh' : '');
+
+  var elName2 = document.createElement('span');
+  elName2.className = 'item-name';
+  elName2.textContent = name;
+
+  var elSpend = document.createElement('span');
+  elSpend.className = 'item-spend';
+  elSpend.textContent = '本月 ' + formatHKD(spend || 0);
+
+  var elLeft = document.createElement('div');
+  elLeft.className = 'item-left';
+  var lab = document.createElement('span');
+  lab.className = 'left-label';
+  lab.textContent = '仲剩';
+  var num = document.createElement('span');
+  num.className = 'left-num';
+  num.textContent = formatQty(remaining);
+  elLeft.appendChild(lab);
+  elLeft.appendChild(num);
+
+  var warning = warningTextFor(remaining, threshold);
+  if(warning){
+    li.classList.add('alarm');
+    elLeft.appendChild(makeChip(warning));
+  }
+
+  var elThresh = document.createElement('div');
+  elThresh.className = 'item-thresh';
+  var thLabel = document.createElement('label');
+  var inputId = 'th-' + encodeURIComponent(name);
+  thLabel.setAttribute('for', inputId);
+  thLabel.textContent = '低量門檻';
+  var thInput = document.createElement('input');
+  thInput.type = 'text';
+  thInput.inputMode = 'decimal';
+  thInput.id = inputId;
+  thInput.placeholder = '唔設';
+  thInput.value = (threshold === null || threshold === undefined) ? '' : String(threshold);
+  thInput.addEventListener('change', function(){ setThreshold(name, thInput, li); });
+  elThresh.appendChild(thLabel);
+  elThresh.appendChild(thInput);
+
+  li.appendChild(elName2);
+  li.appendChild(elSpend);
+  li.appendChild(elLeft);
+  li.appendChild(elThresh);
+  return li;
+}
+
+function render(){
+  var records = loadRecords();
+  var thresholds = loadThresholds();
+  var monthKey = currentMonthKey();
+  var remainingByItem = calculateRemainingByItem(records);
+  var spendByItem = calculateMonthlySpendByItem(records, monthKey);
+
+  elTotal.textContent = formatHKD(calculateMonthlyExpenses(records, monthKey));
+
+  elList.textContent = '';
+  var names = itemNamesInOrder(records);
+  elEmpty.hidden = names.length > 0;
+  names.forEach(function(name){
+    var threshold = Object.prototype.hasOwnProperty.call(thresholds, name) ? thresholds[name] : null;
+    elList.appendChild(makeRow(name, remainingByItem[name] || 0, spendByItem[name] || 0, threshold));
+  });
+  freshName = null;
+}
+
+function thresholdOf(thresholds, name){
+  return Object.prototype.hasOwnProperty.call(thresholds, name) ? thresholds[name] : null;
+}
+
+/* 只換呢一行嘅紅字，唔重砌成個清單（重砌會食咗用家下一 tap） */
+function updateWarning(li, name){
+  var thresholds = loadThresholds();
+  var remaining = calculateRemainingByItem(loadRecords())[name] || 0;
+  var warning = warningTextFor(remaining, thresholdOf(thresholds, name));
+  var oldChip = li.querySelector('.chip');
+  if(oldChip){ oldChip.parentNode.removeChild(oldChip); }
+  li.classList.toggle('alarm', Boolean(warning));
+  if(warning){ li.querySelector('.item-left').appendChild(makeChip(warning)); }
+}
+
+function setThreshold(name, input, li){
+  var thresholds = loadThresholds();
+  var trimmed = input.value.trim();
+  if(trimmed === ''){
+    delete thresholds[name];            /* 留白＝唔設門檻，永遠唔出紅字 */
+  }else{
+    var value = roundTo2(Number(trimmed));
+    if(!isFinite(value) || value < 0){
+      showError('低量門檻要係 0 或以上嘅數字');
+      var kept = thresholdOf(thresholds, name);
+      input.value = (kept === null) ? '' : String(kept);
+      return;
+    }
+    thresholds[name] = value;
+  }
+  if(!saveThresholds(thresholds)){ showError('存唔到，部機儲存位滿咗'); return; }
+  clearError();
+  updateWarning(li, name);
+}
+
+function showError(message){
+  elErr.textContent = message;
+  elErr.hidden = false;
+}
+function clearError(){
+  elErr.textContent = '';
+  elErr.hidden = true;
+}
+
+/* 金額欄：揀咗「用咗」就停用，唔會撳唔到加入掣 */
+function syncAmountField(){
+  var isUse = selectedKind() === 'use';
+  elAmount.disabled = isUse;   /* 停用就夠，唔使抹走用家打咗嘅金額 */
+  elAmount.placeholder = isUse ? '唔使填' : '例：45.00';
+}
+
+elForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  var name = elName.value.trim();
+  if(name === ''){ showError('入返物品名先，例：廁紙'); elName.focus(); return; }
+
+  /* 先四捨五入再驗，唔准出現「過到關但存落去係 0」呢種靜靜雞當 0 */
+  var qtyText = elQty.value.trim();
+  var qty = roundTo2(Number(qtyText));
+  if(qtyText === '' || !isFinite(qty)){ showError('數量要係數字，例：10'); elQty.focus(); return; }
+  if(qty <= 0){ showError('數量要大過 0'); elQty.focus(); return; }
+
+  var kind = selectedKind();
+  var amount = 0;
+  if(kind === 'buy'){
+    var amountText = elAmount.value.trim();
+    if(amountText !== ''){
+      amount = roundTo2(Number(amountText));
+      if(!isFinite(amount)){ showError('金額要係數字，例：45.00'); elAmount.focus(); return; }
+      if(amount < 0){ showError('金額唔可以少過 0'); elAmount.focus(); return; }
+    }
+  }
+
+  var date = elDate.value || todayText();
+
+  var records = loadRecords();
+  records.push({
+    id: 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+    name: name,
+    kind: kind,
+    qty: qty,
+    amount: amount,
+    date: date
+  });
+  if(!saveRecords(records)){ showError('存唔到，部機儲存位滿咗'); return; }
+
+  clearError();
+  freshName = name;
+  elName.value = '';
+  elQty.value = '';
+  elAmount.value = '';
+  elDate.value = todayText();   /* 還原今日，唔會下一筆靜靜雞照跟上次揀嗰個月 */
+  render();
+  elName.focus();
+});
+
+Array.prototype.forEach.call(document.querySelectorAll('input[name="kind"]'), function(radio){
+  radio.addEventListener('change', syncAmountField);
+});
+
+/* 清空要問一次確定，而且只掃走呢個 app 自己嗰兩條 key */
+elClearBtn.addEventListener('click', function(){
+  elConfirm.hidden = false;
+  elClearBtn.hidden = true;
+  document.getElementById('clearYes').focus();
+});
+document.getElementById('clearNo').addEventListener('click', function(){
+  elConfirm.hidden = true;
+  elClearBtn.hidden = false;
+  elClearBtn.focus();
+});
+document.getElementById('clearYes').addEventListener('click', function(){
+  localStorage.removeItem(RECORDS_KEY);
+  localStorage.removeItem(THRESHOLDS_KEY);
+  elConfirm.hidden = true;
+  elClearBtn.hidden = false;
+  clearError();
+  render();
+  elClearBtn.focus();
+});
+
+elDate.value = todayText();
+syncAmountField();
+render();
+
+/* ══ 自己驗自己：喺 Console 打 selfCheck() ══ */
+function selfCheck(){
+  var fails = [];
+  function assert(ok, message){ if(!ok){ fails.push(message); } }
+
+  var thisMonth = currentMonthKey();
+  var lastMonthDate = new Date();
+  lastMonthDate.setDate(1);
+  lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+  var lastMonth = currentMonthKey(lastMonthDate);
+  var today = thisMonth + '-05';
+  var before = lastMonth + '-05';
+
+  /* 1 · 買 10 用 3 剩 7 */
+  var r1 = [
+    {id:'a', name:'廁紙', kind:'buy', qty:10, amount:45, date:today},
+    {id:'b', name:'廁紙', kind:'use', qty:3, amount:0, date:today}
+  ];
+  assert(calculateRemainingByItem(r1)['廁紙'] === 7, '廁紙買 10 用 3 應該仲剩 7');
+
+  /* 2 · 兩筆 $0.10 + $0.20 加總等於 0.30 */
+  var r2 = [
+    {id:'c', name:'牙膏', kind:'buy', qty:1, amount:0.1, date:today},
+    {id:'d', name:'牙刷', kind:'buy', qty:1, amount:0.2, date:today}
+  ];
+  var total2 = calculateMonthlyExpenses(r2, thisMonth);
+  assert(total2 === 0.3 && formatHKD(total2) === '$0.30',
+    '$0.10 + $0.20 應該係 $0.30，而家係 ' + formatHKD(total2));
+
+  /* 3 · 上個月嗰筆「買咗」唔計入本月使費 */
+  var r3 = r2.concat([{id:'e', name:'米', kind:'buy', qty:1, amount:500, date:before}]);
+  var total3 = calculateMonthlyExpenses(r3, thisMonth);
+  assert(total3 === 0.3, '上個月嗰筆 $500 唔應該計入本月，而家係 ' + total3);
+
+  /* 4-7 · 紅字邊界 */
+  assert(warningTextFor(5, 5) === '就快用完', '啱啱等於門檻應該出「就快用完」');
+  assert(warningTextFor(0, 1) === '用完咗', '剩 0 應該出「用完咗」，唔係「就快用完」');
+  assert(warningTextFor(-2, 1) === '數對唔上', '剩負數應該出「數對唔上」');
+  assert(warningTextFor(0, null) === null, '未設門檻嗰陣唔應該出紅字');
+
+  if(fails.length){
+    fails.forEach(function(m){ console.error('selfCheck 唔過：' + m); });
+    return false;
+  }
+  console.log('selfCheck 全過');
+  return true;
+}
+</script>
+</body>
+</html>
