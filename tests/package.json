@@ -1,0 +1,11 @@
+{
+  "name": "home-supplies-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node rls-test.mjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.3.11"
+  }
+}

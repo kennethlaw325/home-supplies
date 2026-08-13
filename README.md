@@ -1,5 +1,12 @@
 # 屋企日用品計算器 v1
 
+> ⚠️ **你而家喺 `supabase-l5` branch。** 呢個 branch 將本機 localStorage 換咗做
+> Supabase 後端 ＋ Google 登入 ＋ 四級角色（管理人／店員／親友／等批准）。
+> 計數嗰層（買咗／用咗／仲剩／低量紅字／本月使費）一行都冇改 —— A1-A8 照樣成立；
+> **A9 入面「唔連網上 library」同「冇登入／帳號」兩句，喺呢個 branch 特登唔再成立**。
+> 接後端嘅逐格步驟：[`SETUP.md`](SETUP.md)。權限層點驗：`tests/`（`cd tests && npm install && npm test`）。
+> 未貼 key 之前開個檔，會出「backend 未接」設定提示頁，唔會退返去本機儲存。
+
 Dot.ai Codex 課程 Level 3 Day 1 堂上砌嘅實物。虛構 client 陳生（四人家庭）想管理屋企日用品：入到「買咗／用咗」、每樣嘢睇到仲剩幾多同本月使咗幾多錢、數量低過門檻會出紅字。
 
 單一 `index.html`，冇外部檔、冇網上 library、冇後端，資料存喺瀏覽器嘅 localStorage。
