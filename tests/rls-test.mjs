@@ -290,6 +290,41 @@ await expectFail('同一個 email 換個大細楷開唔到第二行 members', AD
                   values ($1, '大細楷分身', 'pending')`, [ADMIN_MIXED]),
   'duplicate key');
 
+// 唔經前端開嘅行（導師喺 Table Editor 手打 / 急救 SQL）冇人幫佢 lower()，
+// 客戶端個 .eq('email', 細楷) 就撞唔中 → app 當佢係生人 → 自己排隊 →
+// 撞 unique index → 卡死喺「等批准」。DB 層個 trigger 就係封呢條路。
+const TYPO_EMAIL = 'Mixed.Case@Example.COM';
+const TYPO_LOWER = TYPO_EMAIL.toLowerCase();
+await db.exec(`insert into public.members (email, display_name, role)
+               values ('${TYPO_EMAIL}', '手打成員', 'staff');`);
+const typoStored = (await db.query(
+  `select email from public.members where email = $1`, [TYPO_LOWER])).rows[0];
+check('Table Editor 手打大細楷 email → 存落去係細楷', typoStored?.email === TYPO_LOWER,
+  typoStored ? typoStored.email : '(搵唔到細楷嗰行)');
+
+await as(TYPO_LOWER, async () => {
+  const rows = (await db.query(
+    `select email, role from public.members where email = $1`, [TYPO_LOWER])).rows;
+  check('佢用細楷 .eq 搵得返自己嗰行（唔會再排多次隊）',
+    rows.length === 1 && rows[0].role === 'staff', JSON.stringify(rows));
+});
+
+try {
+  await db.exec(`insert into public.members (email, display_name, role)
+                 values ('MIXED.case@example.com', '手打分身', 'viewer');`);
+  check('手打大細楷重複 email 照樣俾 unique index 彈走', false, '冇報錯');
+} catch (error) {
+  check('手打大細楷重複 email 照樣俾 unique index 彈走',
+    /duplicate key/i.test(error.message), error.message.split('\n')[0]);
+}
+
+await db.exec(`update public.members set email = 'MIXED.CASE@EXAMPLE.COM'
+               where email = '${TYPO_LOWER}';`);
+const typoAfterUpdate = (await db.query(
+  `select count(*)::int as n from public.members where email <> lower(email)`)).rows[0].n;
+check('UPDATE 改成大細楷都一樣拉返細楷（全表冇一行係大楷）', typoAfterUpdate === 0,
+  `${typoAfterUpdate} 行大楷`);
+
 // ═════════ 8. fail-closed：冇 members 行 / JWT 冇 email claim ═════════
 const NOBODY = 'nobody@example.com';
 await as(NOBODY, async () => {

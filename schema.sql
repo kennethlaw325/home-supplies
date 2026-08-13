@@ -178,6 +178,31 @@ before insert on public.records
 for each row execute function private.claim_record_id();
 
 
+-- members.email 一律細楷存 —— 唔止靠客戶端記得 lower()。
+--
+-- 前端查成員係 `.eq('email', 細楷)`（Google 送過嚟個 email lower 完先查）。
+-- 但唔經前端開嘅行冇人 lower：導師喺 Table Editor 手打 `Admin@Gmail.com`、
+-- 或者急救 SQL 打錯大細楷 —— 個 .eq 就撞唔中，app 當佢係生人，走去自己
+-- 排隊，然後撞返上面個 lower(email) unique index（23505），結果卡死喺
+-- 「等批准」而張表其實一直有佢。
+--
+-- 個 unique index 用 lower() 已經當佢哋係同一個人，但「當同一個人」唔等於
+-- 「存法一致」。喺呢度 normalize，成類問題（包括將來新增嘅入口）一次收晒。
+create or replace function private.lower_email()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.email := lower(new.email);
+  return new;
+end;
+$$;
+
+create trigger members_lower_email
+before insert or update on public.members
+for each row execute function private.lower_email();
+
+
 -- ---------------------------------------------------------------------
 --  6. RLS —— 真正嘅權限邊界
 --     App 入面收埋啲掣只係 UX；就算有人用 publishable key 直接 call API，
