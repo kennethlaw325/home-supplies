@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCHEMA_PATH = join(HERE, '..', 'schema.sql');
 
-const ADMIN = 'kennethlaw325a@gmail.com';  // seed 嗰個管理人
+const ADMIN = 'admin@example.com';         // seed 嗰個管理人
 const STAFF = 'chantai@example.com';       // 店員
 const VIEWER = 'auntie@example.com';       // 親友（唯讀）
 const PENDING = 'newbie@example.com';      // 等緊批准
@@ -179,6 +179,12 @@ await as(STAFF, async () => {
     members.length === 1 && members[0].email === STAFF, `${members.length} 行`);
 });
 
+await as(VIEWER, async () => {
+  const members = (await db.query('select email from public.members')).rows;
+  check('親友都係只睇到自己嗰行成員',
+    members.length === 1 && members[0].email === VIEWER, `${members.length} 行`);
+});
+
 // ═════════ 5. created_by 偽造 ═════════
 await expectFail('INSERT 自填第二個人個 email → 俾彈走', STAFF,
   () => insertRecord(newId(), '偽造', ADMIN), 'row-level security');
@@ -210,7 +216,126 @@ await expectFail('客戶端直接叫 private.my_role() 俾拒絕', STAFF,
 await expectFail('客戶端摸唔到用過嘅 id 名冊', STAFF,
   () => db.query('select * from private.used_record_ids'), 'permission denied');
 
-// ═════════ 6. 未登入（anon）直讀直寫 ═════════
+// 上面條路封咗之後仲有一條：唔洗 INSERT，改個 id 就搶到人哋嗰筆
+// （開自己一筆 → 刪走管理人嗰筆 → rename 自己嗰筆做管理人個 id）
+const VICTIM_ID = 'r-admin-2';
+const SWAP_ID = 'r-staff-swap';
+await as(ADMIN, () => insertRecord(VICTIM_ID, '管理人第二筆'));
+await as(STAFF, async () => {
+  await insertRecord(SWAP_ID, '店員自己嗰筆');
+  const deleted = (await db.query(
+    `delete from public.records where id = $1`, [VICTIM_ID])).affectedRows;
+  check('店員刪得走管理人第二筆（佢本身有刪權）', deleted === 1, `${deleted} 行`);
+  await db.query(`update public.records set id = $1 where id = $2`, [VICTIM_ID, SWAP_ID]);
+});
+const afterSwap = (await db.query(
+  `select id, created_by from public.records where id in ($1, $2) order by id`,
+  [VICTIM_ID, SWAP_ID])).rows;
+check('UPDATE 改唔到 records.id（trigger 釘死，rename 偽造路封咗）',
+  afterSwap.length === 1 && afterSwap[0].id === SWAP_ID,
+  JSON.stringify(afterSwap));
+check('管理人嗰個 id 冇俾人搶咗嚟用', afterSwap.every((r) => r.id !== VICTIM_ID),
+  afterSwap.map((r) => `${r.id}:${r.created_by}`).join(', '));
+
+// ═════════ 6. UPSERT（on conflict do update）—— 同 INSERT 唔同嘅 policy 路 ═════════
+// PG 喺 conflict path 會跳過 INSERT policy 個 with check，改行 UPDATE policy。
+// PostgREST 一個 `Prefer: resolution=merge-duplicates` header 就行得到呢條路。
+const staffRow = await as(STAFF, async () => (await db.query(
+  `select id from public.members where lower(email) = lower($1)`, [STAFF])).rows[0]);
+check('店員攞到自己嗰行 members id（下面 upsert 測試要用）', !!staffRow,
+  staffRow ? staffRow.id : '(攞唔到)');
+
+await expectFail('店員 upsert(on conflict id) 自升唔到 admin', STAFF,
+  () => db.query(`insert into public.members (id, email, display_name, role)
+                  values ($1, $2, '陳太', 'pending')
+                  on conflict (id) do update set role = 'admin'`, [staffRow.id, STAFF]),
+  'row-level security');
+const staffRoleNow = (await db.query(
+  `select role from public.members where lower(email) = lower($1)`, [STAFF])).rows[0].role;
+check('店員 upsert 完之後仲係店員', staffRoleNow === 'staff', staffRoleNow);
+
+const UPSERT_VICTIM_ID = 'r-admin-3';
+await as(ADMIN, () => insertRecord(UPSERT_VICTIM_ID, '管理人第三筆'));
+await expectFail('店員 upsert(on conflict id) 覆寫唔到人哋嘅 created_by', STAFF,
+  () => db.query(`insert into public.records (id, name, kind, qty, amount, date, created_by)
+                  values ($1, '搶單', 'buy', 1, 1, '2026-08-13', $2)
+                  on conflict (id) do update set created_by = excluded.created_by`,
+    [UPSERT_VICTIM_ID, STAFF]),
+  '用過');
+const upsertVictim = (await db.query(
+  `select created_by from public.records where id = $1`, [UPSERT_VICTIM_ID])).rows[0];
+check('管理人嗰筆嘅 created_by 冇俾 upsert 改到', upsertVictim.created_by === ADMIN,
+  upsertVictim.created_by);
+
+// 一定要 upsert 一個**已經存在**嘅 name，先至踩到 conflict path
+await expectFail('親友 upsert 一個已存在嘅門檻 → 俾彈走', VIEWER,
+  () => setThreshold('廁紙', 99), 'row-level security');
+const thresholdNow = (await db.query(
+  `select threshold from public.thresholds where name = '廁紙'`)).rows[0];
+check('廁紙門檻冇俾親友 upsert 改到', Number(thresholdNow.threshold) === 4,
+  `threshold=${thresholdNow.threshold}`);
+
+// ═════════ 7. 大細楷 round-trip ═════════
+// 成個設計靠 lower()：unique index、my_role()、睇自己、排隊全部 lower。
+const ADMIN_MIXED = 'ADMIN@Example.COM';
+if (ADMIN_MIXED.toLowerCase() !== ADMIN) throw new Error('casing 測試個 email 對唔返 ADMIN');
+await as(ADMIN_MIXED, async () => {
+  const members = (await db.query('select email from public.members')).rows.length;
+  const records = (await db.query('select id from public.records')).rows.length;
+  check('大細楷唔同嘅 JWT email 一樣認得返係管理人（睇到成個名單）', members > 1, `${members} 行`);
+  check('大細楷唔同嘅 JWT email 一樣讀到紀錄', records > 0, `${records} 筆`);
+});
+await expectFail('同一個 email 換個大細楷開唔到第二行 members', ADMIN_MIXED,
+  () => db.query(`insert into public.members (email, display_name, role)
+                  values ($1, '大細楷分身', 'pending')`, [ADMIN_MIXED]),
+  'duplicate key');
+
+// ═════════ 8. fail-closed：冇 members 行 / JWT 冇 email claim ═════════
+const NOBODY = 'nobody@example.com';
+await as(NOBODY, async () => {
+  const records = (await db.query('select id from public.records')).rows.length;
+  const members = (await db.query('select email from public.members')).rows.length;
+  check('OAuth 過咗但 members 未有行：一筆紀錄都睇唔到', records === 0, `${records} 筆`);
+  check('OAuth 過咗但 members 未有行：成員名單零行', members === 0, `${members} 行`);
+});
+await expectFail('OAuth 過咗但 members 未有行：入唔到數', NOBODY,
+  () => insertRecord(newId(), '無名氏亂入'), 'row-level security');
+
+await as(null, async () => {
+  const records = (await db.query('select id from public.records')).rows.length;
+  const members = (await db.query('select email from public.members')).rows.length;
+  check('JWT claims 空（冇 email）：一筆紀錄都睇唔到', records === 0, `${records} 筆`);
+  check('JWT claims 空（冇 email）：成員名單零行', members === 0, `${members} 行`);
+});
+await expectFail('JWT claims 空（冇 email）：入唔到數', null,
+  () => insertRecord(newId(), '無 claim 亂入'), 'row-level security');
+
+// ═════════ 9. 未登入（anon）直讀直寫 ═════════
+// PGlite 個 anon 係測試自己 create 出嚟，本身就零權 —— 即係刪走 schema.sql
+// 嗰三句 revoke，下面六條照樣 PASS（空驗）。所以先模擬 Supabase 個 default
+// grant（ALTER DEFAULT PRIVILEGES ... GRANT ALL ON TABLES TO anon），驗埋
+// 「就算有 grant，RLS 都守得住」，再用返 schema.sql 原文嗰三句 revoke 收。
+const revokeLines = schema.split('\n')
+  .map((line) => line.trim())
+  .filter((line) => /^revoke all on public\..+from anon;$/.test(line));
+check('schema.sql 有三句 revoke ... from anon（冇咗就係 regression）',
+  revokeLines.length === 3, `${revokeLines.length} 句`);
+
+await db.exec('grant all on public.members, public.records, public.thresholds to anon;');
+await db.exec('set role anon;');
+const anonGrantedRead = (await db.query('select * from public.records')).rows.length;
+check('anon 就算攞到 table grant，RLS 一樣讀 0 行', anonGrantedRead === 0, `${anonGrantedRead} 筆`);
+try {
+  await db.query(`insert into public.records (id, name, kind, qty, amount, date)
+                  values ('anon-grant-1', 'anon 亂入', 'buy', 1, 1, '2026-08-13')`);
+  check('anon 就算攞到 table grant，RLS 一樣寫唔入', false, '冇報錯');
+} catch (error) {
+  check('anon 就算攞到 table grant，RLS 一樣寫唔入',
+    /row-level security/i.test(error.message), error.message.split('\n')[0]);
+}
+await db.exec('reset role;');
+await db.exec(revokeLines.join('\n'));
+
 await db.exec('set role anon;');
 for (const [label, sql] of [
   ['讀 records', 'select * from public.records'],
@@ -230,7 +355,7 @@ for (const [label, sql] of [
 }
 await db.exec('reset role;');
 
-// ═════════ 7. policy / trigger 數目 ═════════
+// ═════════ 10. policy / trigger 數目 ═════════
 const policies = (await db.query(
   `select count(*)::int as n from pg_policies where schemaname = 'public'`)).rows[0].n;
 check('13 條 policy（members 5 + records 4 + thresholds 4）', policies === 13, `${policies} 條`);
@@ -238,7 +363,7 @@ check('13 條 policy（members 5 + records 4 + thresholds 4）', policies === 13
 const triggers = (await db.query(
   `select count(*)::int as n from pg_trigger
    where tgrelid = 'public.records'::regclass and not tgisinternal`)).rows[0].n;
-check('records 有 2 個 trigger（鎖 created_by + 唔准重用 id）', triggers === 2, `${triggers} 個`);
+check('records 有 2 個 trigger（鎖死 id + created_by ＋ 唔准重用 id）', triggers === 2, `${triggers} 個`);
 
 const failed = results.filter((pass) => !pass).length;
 console.log(`\n總結：${results.length - failed}/${results.length} PASS${failed ? `  ⚠ ${failed} FAIL` : '  全部通過'}`);

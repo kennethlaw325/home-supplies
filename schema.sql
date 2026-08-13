@@ -113,16 +113,23 @@ revoke all on function private.my_role() from public, anon;
 grant execute on function private.my_role() to authenticated;
 
 
--- created_by 一旦寫低，喺呢一行上面就唔准再改。
+-- id 同 created_by 一旦寫低，喺呢一行上面就唔准再改。
 -- 點解用 trigger 而唔係喺 UPDATE policy 個 with check 度釘死：
 -- RLS 嘅 with check 只睇得到改完之後嗰行，冇 OLD 可以對照。喺嗰度寫
 -- `created_by = auth.jwt()->>'email'` 會連帶令店員改唔到人哋開嘅紀錄。
--- trigger 就啱啱好：鎖死呢一欄，其他欄照改。
+-- trigger 就啱啱好：鎖死呢兩欄，其他欄照改。
+--
+-- 點解連 id 都要鎖：下面個 claim trigger 只守 INSERT，UPDATE 冇人守。
+-- 唔鎖 id 嘅話，店員可以（1）開自己一筆 Z（2）刪走管理人嗰筆 R
+-- （3）`update records set id = 'R' where id = 'Z'` —— 冇經過 INSERT，
+-- 名冊唔知情，created_by 又照留返佢自己，即係繞返出「刪咗再開」條路。
+-- app 本身從來唔改 id（新一筆一定係 INSERT），所以直接釘死冇副作用。
 create or replace function private.keep_created_by()
 returns trigger
 language plpgsql
 as $$
 begin
+  new.id := old.id;
   new.created_by := old.created_by;
   return new;
 end;
@@ -292,10 +299,12 @@ using ( private.my_role() in ('admin', 'staff') );
 --  ⬇⬇⬇  跑之前一定要改呢一行：換做你自己個 Gmail  ⬇⬇⬇
 --  就係你等陣撳「用 Google 登入」嗰個帳號。唔改就冇人做得管理人，
 --  你登入完會卡喺「等批准」畫面，冇人批得到你。
---  （連個 `<` `>` 一齊刪走，例：'kennethlaw325a@gmail.com'）
+--  （連個 `<` `>` 一齊刪走，例：'admin@example.com'）
+--  lower() 係特登嘅：全表 email 一律細楷存，客戶端就可以用 eq 直接對得返
+--  Google 送過嚟嗰個（大細楷唔同都當同一個人，靠上面個 lower unique index）。
 -- ---------------------------------------------------------------------
 insert into public.members (email, display_name, role)
-values ('<你嘅Gmail@gmail.com>', '我（管理人）', 'admin')
+values (lower('<你嘅Gmail@gmail.com>'), '我（管理人）', 'admin')
 on conflict do nothing;
 
 
@@ -311,7 +320,7 @@ from pg_policies
 where schemaname = 'public'
 order by tablename, cmd, policyname;
 
--- 應該見到 2 個 trigger（鎖死 created_by + 用過嘅 id 唔准重用）：
+-- 應該見到 2 個 trigger（鎖死 id + created_by ＋ 用過嘅 id 唔准重用）：
 select tgname from pg_trigger
 where tgrelid = 'public.records'::regclass and not tgisinternal
 order by tgname;

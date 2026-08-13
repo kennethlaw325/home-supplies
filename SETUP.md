@@ -10,6 +10,7 @@
 
 ```
 https://kennethlaw325.github.io/home-supplies/
+⚠️ 下面成張卡見到 kennethlaw325 就換做你自己個 GitHub 名
 ```
 
 ---
@@ -239,6 +240,7 @@ await sb.from('records').insert({
 | Console 見到 `infinite recursion detected` | `private.my_role()` 冇建成功。重跑成份 `schema.sql` —— ⚠️ **重跑會清走 records / thresholds / members**，跑之前先 Export CSV ＋ 抄低成員名單 |
 | 入數話「你冇改呢盤數嘅權限」但你係管理人 | 你登入嗰個 email ≠ `members` 入面嗰個。對一對大細楷／有冇打錯 |
 | 見到「呢個紀錄 id 用過咗」 | 正常防守：刪咗嘅紀錄唔准用返同一個 id 開返（防人偽造 `created_by`）。入新一筆就得 |
+| **全屋冇晒管理人**（成員管理入面冇人係管理人，冇人批得人） | app 入面救唔到，要返 Supabase → **SQL Editor** → New query 跑：<br>`update public.members set role = 'admin' where lower(email) = lower('你個email@gmail.com');`<br>（跑完撳 Run 見到 `Success. 1 row`，返去 app 登出再登入）<br>💡 成員管理入面你自己嗰行個權限掣係 disabled、亦冇「移除」掣，就係為咗唔好行到呢一步 |
 
 ---
 

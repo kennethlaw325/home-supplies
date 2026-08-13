@@ -1022,11 +1022,17 @@ function makeMemberRow(member){
     picker.appendChild(option);
   });
   picker.value = isPending ? 'staff' : member.role;
+  /* 自己嗰行淨係睇得唔改得：管理人一撳「親友」或者「移除」就冇人批得人，
+     App 層零退路（要返 Supabase SQL Editor 救，見 SETUP.md 撞板急救）。 */
+  picker.disabled = isSelf;
 
-  var action = document.createElement('button');
-  action.type = 'button';
-  action.className = 'ghost';
-  action.textContent = isPending ? '批准' : '移除';
+  var action = null;
+  if(!isSelf){
+    action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'ghost';
+    action.textContent = isPending ? '批准' : '移除';
+  }
 
   picker.addEventListener('change', async function(){
     if(isPending) return;   /* 未批准嘅要撳「批准」先落 DB */
@@ -1038,7 +1044,7 @@ function makeMemberRow(member){
     }
   });
 
-  action.addEventListener('click', async function(){
+  if(action) action.addEventListener('click', async function(){
     action.disabled = true;
     try{
       if(isPending){
@@ -1057,7 +1063,7 @@ function makeMemberRow(member){
 
   li.appendChild(who);
   li.appendChild(picker);
-  li.appendChild(action);
+  if(action) li.appendChild(action);
   return li;
 }
 
@@ -1139,12 +1145,16 @@ document.getElementById('migrateSkip').addEventListener('click', function(){
 /* ══ L5：登入 ══ */
 
 async function handleSignedIn(user){
-  state.email = user.email || '';
+  /* 一律細楷：members 全表都係細楷存（schema.sql 個 lower unique index +
+     seed 嗰句 lower()），所以對得返。唔用 ilike —— ilike 係 pattern match，
+     email 入面嘅 `_` `%` 會當通配符，撞中第二行就 maybeSingle() 報錯，
+     管理人反而卡死喺「等緊批准」。 */
+  state.email = (user.email || '').toLowerCase();
   state.name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
 
   var member = null;
   try{
-    member = unwrap(await sb.from('members').select('*').ilike('email', state.email).maybeSingle());
+    member = unwrap(await sb.from('members').select('*').eq('email', state.email).maybeSingle());
     if(!member){
       /* 第一次入嚟嘅生人：自己開一行 pending 排隊。
          RLS 只准開自己 email 而且 role 一定係 pending，自封唔到 admin。 */
@@ -1154,7 +1164,7 @@ async function handleSignedIn(user){
         role: 'pending'
       });
       if(insert.error && insert.error.code !== '23505') console.warn('登記排隊失敗。', insert.error.message);
-      member = unwrap(await sb.from('members').select('*').ilike('email', state.email).maybeSingle());
+      member = unwrap(await sb.from('members').select('*').eq('email', state.email).maybeSingle());
     }
   }catch(error){
     console.error('攞唔到成員資料。', error);
