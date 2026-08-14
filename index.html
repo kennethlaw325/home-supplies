@@ -109,7 +109,7 @@ input[type=text],input[type=date]{
   transition:border-color .18s cubic-bezier(.16,1,.3,1),background-color .18s;
 }
 input::placeholder{color:var(--ink-faint)}
-input:focus-visible,button:focus-visible{
+input:focus-visible,button:focus-visible,select:focus-visible{
   outline:2px solid var(--accent);
   outline-offset:2px;
 }
@@ -162,6 +162,7 @@ input:disabled{background:var(--paper-2);color:var(--ink-faint);border-style:das
 }
 .add:hover{filter:brightness(1.06)}
 .add:active{transform:scale(.985)}
+.add:disabled{filter:grayscale(.5) brightness(1.1);cursor:progress}
 
 /* ── 清單區 ── */
 .list{margin-top:clamp(26px,7vw,38px)}
@@ -260,6 +261,101 @@ ul{list-style:none;margin:0;padding:0}
 #clearYes{background:var(--alarm);color:oklch(0.99 0.01 60);border:0}
 #clearNo{background:transparent;border:1px solid var(--alarm-line);color:var(--alarm)}
 
+/* ── L5：登入閘、角色、成員管理 ── */
+.gate{
+  margin-top:clamp(20px,6vw,30px);
+  padding:clamp(20px,6vw,28px);
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:oklch(0.995 0.008 84);
+}
+.gate h2{margin:0 0 10px;font-size:1.15rem;font-weight:800}
+.gate p{margin:0 0 14px;font-size:.92rem;color:var(--ink-soft)}
+.gate p:last-child{margin-bottom:0}
+.gate ol{margin:0 0 16px;padding-left:1.25em;font-size:.92rem;color:var(--ink-soft)}
+.gate li{margin-bottom:7px}
+.gate code{
+  font-size:.86em;
+  background:var(--paper-2);
+  border:1px solid var(--line-soft);
+  border-radius:5px;
+  padding:1px 5px;
+  overflow-wrap:anywhere;
+}
+.gate-btns{display:flex;gap:9px;flex-wrap:wrap}
+.stamp{
+  display:inline-block;
+  margin:0 0 12px;
+  padding:5px 12px;
+  border:2px solid var(--alarm-line);
+  border-radius:7px;
+  color:var(--alarm);
+  font-size:.82rem;font-weight:800;letter-spacing:.14em;
+  transform:rotate(-1.5deg);
+}
+.ghost{
+  font:inherit;font-size:.95rem;font-weight:650;
+  min-height:46px;padding:0 16px;
+  background:transparent;
+  border:1px solid var(--line);
+  border-radius:9px;
+  color:var(--ink-soft);
+  cursor:pointer;
+  transition:border-color .18s,color .18s;
+}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.ghost[aria-current="true"]{border-color:var(--ink);color:var(--ink)}
+
+.userbar{
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+  padding:10px 0 14px;
+  margin-bottom:clamp(14px,4vw,20px);
+  border-bottom:1px solid var(--line);
+}
+.role-chip{
+  display:inline-flex;align-items:center;
+  height:26px;padding:0 11px;border-radius:999px;
+  background:var(--ink);color:var(--paper);
+  font-size:.78rem;font-weight:700;letter-spacing:.06em;white-space:nowrap;
+}
+.role-chip.is-viewer{background:var(--ink-soft)}
+.role-chip.is-staff{background:var(--accent)}
+.userbar-email{
+  flex:1;min-width:8ch;
+  font-size:.82rem;color:var(--ink-soft);
+  overflow-wrap:anywhere;
+}
+.userbar .ghost{min-height:38px;padding:0 12px;font-size:.85rem}
+
+.notice{
+  margin:0 0 18px;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--paper-2);
+  font-size:.88rem;color:var(--ink-soft);
+}
+.notice-btns{display:flex;gap:9px;flex-wrap:wrap;margin-top:11px}
+.notice.readonly{border-color:var(--accent-soft);background:var(--accent-soft);color:var(--ink)}
+
+.member{
+  display:flex;align-items:center;flex-wrap:wrap;gap:9px;
+  padding:14px 12px;
+  margin-inline:-12px;
+  border-top:1px solid var(--line-soft);
+}
+.member:first-child{border-top-color:var(--line)}
+.member-who{flex:1;min-width:12ch}
+.member-email{font-size:.95rem;font-weight:700;overflow-wrap:anywhere}
+.member-name{font-size:.8rem;color:var(--ink-soft)}
+.member select{
+  font:inherit;font-size:.9rem;
+  min-height:42px;padding:0 8px;
+  border:1px solid var(--line);border-radius:9px;
+  background:oklch(0.995 0.008 84);color:var(--ink);
+}
+.member .ghost{min-height:42px;padding:0 12px;font-size:.88rem}
+
 @keyframes chip-in{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
 @keyframes fresh{from{background:var(--accent-soft)}to{background:transparent}}
 @media (prefers-reduced-motion:reduce){
@@ -275,95 +371,163 @@ ul{list-style:none;margin:0;padding:0}
     <p class="tagline">入低買咗同用咗，唔使等到用晒先知。</p>
   </header>
 
-  <section class="total">
-    <span class="total-label">本月屋企使費</span>
-    <span class="total-leader" aria-hidden="true"></span>
-    <span class="total-amount" id="monthTotal">$0.00</span>
+  <!-- ══ 未貼 Supabase key：設定提示頁（唔會白畫面，亦唔會靜靜雞用返本機儲存） ══ -->
+  <section class="gate" id="setupPane" hidden>
+    <h2>backend 未接</h2>
+    <p>呢個版本嘅紀錄住喺 Supabase，唔再住喺瀏覽器。<code>index.html</code> 頂部嗰兩行 config 仲係 placeholder，所以而家連唔到後端，亦都唔會退返去本機儲存。</p>
+    <ol>
+      <li>開一個 Supabase project，喺 SQL Editor 跑 <code>schema.sql</code>（最尾嗰行改做你個 Gmail）。</li>
+      <li>開 Google OAuth client，喺 Supabase 開 Google provider ＋ 填 URL Configuration。</li>
+      <li>將 Project URL 同 Publishable key 貼入 <code>index.html</code> 嘅 <code>SUPABASE_URL</code> / <code>SUPABASE_KEY</code>。</li>
+    </ol>
+    <p>三步嘅逐格 checklist 喺同一個資料夾嘅 <code>SETUP.md</code>。</p>
   </section>
 
-  <section>
-    <h2 class="head">加一筆紀錄</h2>
-    <form id="entryForm" novalidate autocomplete="off">
-      <div class="field">
-        <label for="fName">物品名</label>
-        <input id="fName" type="text" placeholder="例：廁紙">
-      </div>
-
-      <fieldset class="seg">
-        <legend>類型</legend>
-        <div class="seg-body">
-          <label><input type="radio" name="kind" value="buy" checked><span>買咗</span></label>
-          <label><input type="radio" name="kind" value="use"><span>用咗</span></label>
-        </div>
-      </fieldset>
-
-      <div class="pair">
-        <div class="field">
-          <label for="fQty">數量</label>
-          <input id="fQty" type="text" inputmode="decimal" placeholder="例：10">
-        </div>
-        <div class="field">
-          <label for="fAmount">金額（港幣）</label>
-          <input id="fAmount" type="text" inputmode="decimal" placeholder="例：45.00">
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="fDate">日期</label>
-        <input id="fDate" type="date">
-      </div>
-
-      <p class="hint" id="amountHint">「用咗」唔使填金額</p>
-      <p class="err" id="formErr" role="alert" hidden></p>
-      <button class="add" type="submit">加入</button>
-    </form>
+  <!-- ══ 登入 ══ -->
+  <section class="gate" id="loginPane" hidden>
+    <h2>要登入先睇到屋企盤數</h2>
+    <p>用 Google 登入。第一次入嚟嘅人會排隊等管理人批准。</p>
+    <div class="gate-btns">
+      <button class="add" type="button" id="googleLogin">用 Google 登入</button>
+    </div>
+    <p class="hint" id="loginNote" role="status" aria-live="polite"></p>
   </section>
 
-  <section class="list">
-    <h2 class="head">屋企有咩</h2>
-    <p class="empty" id="emptyMsg">未有紀錄，加第一筆啦</p>
-    <ul id="itemList"></ul>
-  </section>
-
-  <section class="danger">
-    <button type="button" id="clearBtn" class="clear">清空全部紀錄</button>
-    <div class="confirm" id="clearConfirm" hidden>
-      <p>真係清空全部紀錄？清咗攞唔返。</p>
-      <div class="confirm-btns">
-        <button type="button" id="clearYes">係，清空</button>
-        <button type="button" id="clearNo">唔清</button>
-      </div>
+  <!-- ══ 等批准 ══ -->
+  <section class="gate" id="pendingPane" hidden>
+    <p class="stamp">等緊批准</p>
+    <h2>你嘅帳戶未有權限</h2>
+    <p id="pendingCopy">同管理人講聲，佢喺「成員管理」批准你之後再試。</p>
+    <div class="gate-btns">
+      <button class="ghost" type="button" id="pendingRecheck">我已經俾人批咗，再試</button>
+      <button class="ghost" type="button" id="pendingLogout">登出</button>
     </div>
   </section>
 
+  <!-- ══ 入到嚟先見到嘅嘢 ══ -->
+  <div id="appShell" hidden>
+
+    <div class="userbar">
+      <span class="role-chip" id="roleChip">—</span>
+      <span class="userbar-email" id="userEmail"></span>
+      <button class="ghost" type="button" id="navLedger" aria-current="true">帳簿</button>
+      <button class="ghost" type="button" id="navMembers" hidden>成員管理</button>
+      <button class="ghost" type="button" id="logoutBtn">登出</button>
+    </div>
+
+    <div id="ledgerView">
+
+      <p class="notice readonly" id="readonlyNote" hidden>你係「親友」，淨係睇得，改唔到數。</p>
+
+      <div class="notice" id="migrateBanner" hidden>
+        <span id="migrateCopy"></span>
+        <div class="notice-btns">
+          <button class="ghost" type="button" id="migrateRun">搬上 Supabase</button>
+          <button class="ghost" type="button" id="migrateSkip">唔搬</button>
+        </div>
+      </div>
+
+      <section class="total">
+        <span class="total-label">本月屋企使費</span>
+        <span class="total-leader" aria-hidden="true"></span>
+        <span class="total-amount" id="monthTotal">$0.00</span>
+      </section>
+
+      <section id="entrySection">
+        <h2 class="head">加一筆紀錄</h2>
+        <form id="entryForm" novalidate autocomplete="off">
+          <div class="field">
+            <label for="fName">物品名</label>
+            <input id="fName" type="text" placeholder="例：廁紙">
+          </div>
+
+          <fieldset class="seg">
+            <legend>類型</legend>
+            <div class="seg-body">
+              <label><input type="radio" name="kind" value="buy" checked><span>買咗</span></label>
+              <label><input type="radio" name="kind" value="use"><span>用咗</span></label>
+            </div>
+          </fieldset>
+
+          <div class="pair">
+            <div class="field">
+              <label for="fQty">數量</label>
+              <input id="fQty" type="text" inputmode="decimal" placeholder="例：10">
+            </div>
+            <div class="field">
+              <label for="fAmount">金額（港幣）</label>
+              <input id="fAmount" type="text" inputmode="decimal" placeholder="例：45.00">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="fDate">日期</label>
+            <input id="fDate" type="date">
+          </div>
+
+          <p class="hint" id="amountHint">「用咗」唔使填金額</p>
+          <p class="err" id="formErr" role="alert" hidden></p>
+          <button class="add" type="submit" id="addBtn">加入</button>
+        </form>
+      </section>
+
+      <section class="list">
+        <h2 class="head">屋企有咩</h2>
+        <p class="empty" id="emptyMsg">未有紀錄，加第一筆啦</p>
+        <ul id="itemList"></ul>
+      </section>
+
+      <section class="danger" id="dangerSection">
+        <button type="button" id="clearBtn" class="clear">清空全部紀錄</button>
+        <div class="confirm" id="clearConfirm" hidden>
+          <p>真係清空全部紀錄？清咗攞唔返，而且係全屋所有人嗰份。</p>
+          <div class="confirm-btns">
+            <button type="button" id="clearYes">係，清空</button>
+            <button type="button" id="clearNo">唔清</button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div id="membersView" hidden>
+      <section>
+        <h2 class="head">等緊批准</h2>
+        <p class="empty" id="pendingEmpty">冇人等緊批准。</p>
+        <ul id="pendingList" hidden></ul>
+      </section>
+      <section class="list">
+        <h2 class="head">現有成員</h2>
+        <ul id="memberList"></ul>
+      </section>
+      <p class="hint" id="membersNote" role="status" aria-live="polite"></p>
+    </div>
+
+  </div>
+
 </main>
 
+<!-- L5 開始接受一個外部依賴：supabase-js。之前幾級係零外部檔。 -->
+<script
+  src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+  integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
+  crossorigin="anonymous"></script>
 <script>
-/* ══ 儲存層：只存「發生過嘅事」，唔會另外存一個仲剩幾多嘅數 ══ */
-var RECORDS_KEY = 'household-ledger-records';
-var THRESHOLDS_KEY = 'household-ledger-thresholds';
+/* ══════════════════════════════════════════════════════════════════
+   ▼▼▼  CONFIG —— 貼你自己 Supabase project 嗰兩樣落嚟  ▼▼▼
+   Supabase → Project Settings → API Keys
+   兩行都未換就開唔到 app，會出「backend 未接」設定提示頁。
+   逐格步驟：同一個資料夾嘅 SETUP.md
+   ══════════════════════════════════════════════════════════════════ */
+var SUPABASE_URL = 'https://ldbmvzzfovcusxkohhxx.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_ywlaQj7DRncImbGFYREXDw_YkdQPILS';
 
-function loadRecords(){
-  try{
-    var raw = JSON.parse(localStorage.getItem(RECORDS_KEY));
-    return Array.isArray(raw) ? raw : [];
-  }catch(e){ return []; }
-}
-/* 存唔到（部機儲存位滿咗／私密模式）唔准靜靜雞當成功 */
-function saveRecords(records){
-  try{ localStorage.setItem(RECORDS_KEY, JSON.stringify(records)); return true; }
-  catch(e){ return false; }
-}
-function loadThresholds(){
-  try{
-    var raw = JSON.parse(localStorage.getItem(THRESHOLDS_KEY));
-    return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
-  }catch(e){ return {}; }
-}
-function saveThresholds(thresholds){
-  try{ localStorage.setItem(THRESHOLDS_KEY, JSON.stringify(thresholds)); return true; }
-  catch(e){ return false; }
-}
+/* ══ 儲存層：紀錄同門檻住喺 Supabase，本機淨係揸住一份 cache ══
+   計數嗰層一行都冇改：佢哋照樣攞一個 array 同一個 object 返嚟。 */
+var cache = { records: [], thresholds: Object.create(null) };
+
+function loadRecords(){ return cache.records; }
+function loadThresholds(){ return cache.thresholds; }
 
 /* ══ 腦層：全部數由紀錄計返出嚟 ══ */
 
@@ -434,6 +598,88 @@ function warningTextFor(remaining, threshold){
   return null;
 }
 
+/* ══ L5：角色同權限 ══
+   真正嘅權限邊界喺 Supabase 嘅 RLS policy（schema.sql）。
+   下面呢張表淨係用嚟收埋撳唔到嘅掣，係 UX 唔係保安。 */
+var PERMISSIONS = {
+  admin:   { read:true,  write:true,  manage:true  },
+  staff:   { read:true,  write:true,  manage:false },
+  viewer:  { read:true,  write:false, manage:false },
+  pending: { read:false, write:false, manage:false }
+};
+var ROLE_LABEL = { admin:'管理人', staff:'店員', viewer:'親友（唯讀）', pending:'等緊批准' };
+var ROLE_CHIP  = { admin:'管理人', staff:'店員', viewer:'親友', pending:'待批' };
+var ASSIGNABLE_ROLES = ['admin', 'staff', 'viewer'];
+
+var state = { email:'', name:'', role:null };
+
+function can(action){
+  return Boolean(PERMISSIONS[state.role] && PERMISSIONS[state.role][action]);
+}
+
+/* ══ Supabase 資料層 ══ */
+var sb = null;
+
+function unwrap(res){
+  if(res.error) throw new Error(res.error.message || String(res.error));
+  return res.data;
+}
+
+var store = {
+  /* 物品出場次序＝第一次入嗰筆嘅次序，靠 seq 還原，唔可以淨係靠 date */
+  loadAll: async function(){
+    var rows = unwrap(await sb.from('records')
+      .select('id,name,kind,qty,amount,date').order('seq', { ascending:true })) || [];
+    cache.records = rows.map(function(row){
+      return {
+        id: row.id, name: row.name, kind: row.kind,
+        qty: Number(row.qty), amount: Number(row.amount), date: row.date
+      };
+    });
+    var rules = unwrap(await sb.from('thresholds').select('name,threshold')) || [];
+    var map = Object.create(null);
+    rules.forEach(function(rule){ map[rule.name] = Number(rule.threshold); });
+    cache.thresholds = map;
+  },
+  addRecords: async function(newRecords){
+    /* created_by 唔喺度送：由 DB 個 default 填登入者本人，
+       前端填得就等於前端偽造得（RLS 嗰邊都會彈走）。 */
+    unwrap(await sb.from('records').insert(newRecords));
+    newRecords.forEach(function(record){ cache.records.push(record); });
+  },
+  setThreshold: async function(name, value){
+    unwrap(await sb.from('thresholds').upsert({ name:name, threshold:value }));
+    cache.thresholds[name] = value;
+  },
+  removeThreshold: async function(name){
+    unwrap(await sb.from('thresholds').delete().eq('name', name));
+    delete cache.thresholds[name];
+  },
+  setThresholds: async function(map){
+    var rows = Object.keys(map).map(function(name){
+      return { name:name, threshold:map[name] };
+    });
+    if(rows.length === 0) return;
+    unwrap(await sb.from('thresholds').upsert(rows));
+    rows.forEach(function(row){ cache.thresholds[row.name] = row.threshold; });
+  },
+  clearAll: async function(){
+    unwrap(await sb.from('records').delete().neq('id', ''));
+    unwrap(await sb.from('thresholds').delete().neq('name', ''));
+    cache.records = [];
+    cache.thresholds = Object.create(null);
+  },
+  listMembers: async function(){
+    return unwrap(await sb.from('members').select('*').order('created_at', { ascending:true })) || [];
+  },
+  setMemberRole: async function(memberId, role){
+    unwrap(await sb.from('members').update({ role:role }).eq('id', memberId));
+  },
+  removeMember: async function(memberId){
+    unwrap(await sb.from('members').delete().eq('id', memberId));
+  }
+};
+
 /* ══ 介面層 ══ */
 var elTotal = document.getElementById('monthTotal');
 var elList = document.getElementById('itemList');
@@ -444,8 +690,31 @@ var elQty = document.getElementById('fQty');
 var elAmount = document.getElementById('fAmount');
 var elDate = document.getElementById('fDate');
 var elErr = document.getElementById('formErr');
+var elAddBtn = document.getElementById('addBtn');
 var elClearBtn = document.getElementById('clearBtn');
 var elConfirm = document.getElementById('clearConfirm');
+
+var elSetupPane = document.getElementById('setupPane');
+var elLoginPane = document.getElementById('loginPane');
+var elPendingPane = document.getElementById('pendingPane');
+var elPendingCopy = document.getElementById('pendingCopy');
+var elLoginNote = document.getElementById('loginNote');
+var elAppShell = document.getElementById('appShell');
+var elRoleChip = document.getElementById('roleChip');
+var elUserEmail = document.getElementById('userEmail');
+var elNavLedger = document.getElementById('navLedger');
+var elNavMembers = document.getElementById('navMembers');
+var elLedgerView = document.getElementById('ledgerView');
+var elMembersView = document.getElementById('membersView');
+var elReadonlyNote = document.getElementById('readonlyNote');
+var elEntrySection = document.getElementById('entrySection');
+var elDangerSection = document.getElementById('dangerSection');
+var elPendingList = document.getElementById('pendingList');
+var elPendingEmpty = document.getElementById('pendingEmpty');
+var elMemberList = document.getElementById('memberList');
+var elMembersNote = document.getElementById('membersNote');
+var elMigrateBanner = document.getElementById('migrateBanner');
+var elMigrateCopy = document.getElementById('migrateCopy');
 
 var freshName = null; /* 啱啱加完嗰樣，畫面上閃一閃 */
 
@@ -517,6 +786,7 @@ function makeRow(name, remaining, spend, threshold){
   thInput.id = inputId;
   thInput.placeholder = '唔設';
   thInput.value = (threshold === null || threshold === undefined) ? '' : String(threshold);
+  thInput.disabled = !can('write');   /* 親友改唔到；真正嘅擋喺 RLS */
   thInput.addEventListener('change', function(){ setThreshold(name, thInput, li); });
   elThresh.appendChild(thLabel);
   elThresh.appendChild(thInput);
@@ -562,24 +832,36 @@ function updateWarning(li, name){
   if(warning){ li.querySelector('.item-left').appendChild(makeChip(warning)); }
 }
 
-function setThreshold(name, input, li){
+async function setThreshold(name, input, li){
   var thresholds = loadThresholds();
   var trimmed = input.value.trim();
-  if(trimmed === ''){
-    delete thresholds[name];            /* 留白＝唔設門檻，永遠唔出紅字 */
-  }else{
-    var value = roundTo2(Number(trimmed));
-    if(!isFinite(value) || value < 0){
-      showError('低量門檻要係 0 或以上嘅數字');
-      var kept = thresholdOf(thresholds, name);
-      input.value = (kept === null) ? '' : String(kept);
-      return;
+  var kept = thresholdOf(thresholds, name);
+  try{
+    if(trimmed === ''){
+      await store.removeThreshold(name);   /* 留白＝唔設門檻，永遠唔出紅字 */
+    }else{
+      var value = roundTo2(Number(trimmed));
+      if(!isFinite(value) || value < 0){
+        showError('低量門檻要係 0 或以上嘅數字');
+        input.value = (kept === null) ? '' : String(kept);
+        return;
+      }
+      await store.setThreshold(name, value);
     }
-    thresholds[name] = value;
+  }catch(error){
+    showError(saveErrorText(error));
+    input.value = (kept === null) ? '' : String(kept);
+    return;
   }
-  if(!saveThresholds(thresholds)){ showError('存唔到，部機儲存位滿咗'); return; }
   clearError();
   updateWarning(li, name);
+}
+
+/* 存唔到唔准靜靜雞當成功；係權限問題就照直講 */
+function saveErrorText(error){
+  var message = String((error && error.message) || error);
+  if(/row-level security/i.test(message)) return '存唔到：你冇改呢盤數嘅權限';
+  return '存唔到：' + message;
 }
 
 function showError(message){
@@ -598,7 +880,7 @@ function syncAmountField(){
   elAmount.placeholder = isUse ? '唔使填' : '例：45.00';
 }
 
-elForm.addEventListener('submit', function(e){
+elForm.addEventListener('submit', async function(e){
   e.preventDefault();
   var name = elName.value.trim();
   if(name === ''){ showError('入返物品名先，例：廁紙'); elName.focus(); return; }
@@ -622,16 +904,24 @@ elForm.addEventListener('submit', function(e){
 
   var date = elDate.value || todayText();
 
-  var records = loadRecords();
-  records.push({
+  var record = {
     id: 'r' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
     name: name,
     kind: kind,
     qty: qty,
     amount: amount,
     date: date
-  });
-  if(!saveRecords(records)){ showError('存唔到，部機儲存位滿咗'); return; }
+  };
+
+  elAddBtn.disabled = true;
+  try{
+    await store.addRecords([record]);
+  }catch(error){
+    showError(saveErrorText(error));
+    return;
+  }finally{
+    elAddBtn.disabled = false;
+  }
 
   clearError();
   freshName = name;
@@ -647,7 +937,7 @@ Array.prototype.forEach.call(document.querySelectorAll('input[name="kind"]'), fu
   radio.addEventListener('change', syncAmountField);
 });
 
-/* 清空要問一次確定，而且只掃走呢個 app 自己嗰兩條 key */
+/* 清空要問一次確定。而家清嘅係全屋共用嗰盤數，唔止自己部機。 */
 elClearBtn.addEventListener('click', function(){
   elConfirm.hidden = false;
   elClearBtn.hidden = true;
@@ -658,11 +948,16 @@ document.getElementById('clearNo').addEventListener('click', function(){
   elClearBtn.hidden = false;
   elClearBtn.focus();
 });
-document.getElementById('clearYes').addEventListener('click', function(){
-  localStorage.removeItem(RECORDS_KEY);
-  localStorage.removeItem(THRESHOLDS_KEY);
-  elConfirm.hidden = true;
-  elClearBtn.hidden = false;
+document.getElementById('clearYes').addEventListener('click', async function(){
+  try{
+    await store.clearAll();
+  }catch(error){
+    showError(saveErrorText(error));
+    return;
+  }finally{
+    elConfirm.hidden = true;
+    elClearBtn.hidden = false;
+  }
   clearError();
   render();
   elClearBtn.focus();
@@ -670,7 +965,296 @@ document.getElementById('clearYes').addEventListener('click', function(){
 
 elDate.value = todayText();
 syncAmountField();
-render();
+
+/* ══ L5：閘同角色 ══ */
+
+function showPane(which){
+  elSetupPane.hidden = which !== 'setup';
+  elLoginPane.hidden = which !== 'login';
+  elPendingPane.hidden = which !== 'pending';
+  elAppShell.hidden = which !== 'app';
+}
+
+function setView(view){
+  elLedgerView.hidden = view !== 'ledger';
+  elMembersView.hidden = view !== 'members';
+  elNavLedger.setAttribute('aria-current', String(view === 'ledger'));
+  elNavMembers.setAttribute('aria-current', String(view === 'members'));
+  if(view === 'members') renderMembers();
+}
+
+function applyRole(){
+  elRoleChip.textContent = ROLE_CHIP[state.role] || '—';
+  elRoleChip.className = 'role-chip is-' + state.role;
+  elRoleChip.title = ROLE_LABEL[state.role] || '';
+  elUserEmail.textContent = state.email;
+  elEntrySection.hidden = !can('write');
+  elDangerSection.hidden = !can('write');
+  elReadonlyNote.hidden = can('write');
+  elNavMembers.hidden = !can('manage');
+}
+
+/* ══ L5：成員管理（淨係管理人開到） ══ */
+
+function makeMemberRow(member){
+  var li = document.createElement('li');
+  li.className = 'member';
+  var isPending = member.role === 'pending';
+  var isSelf = String(member.email || '').toLowerCase() === state.email.toLowerCase();
+
+  var who = document.createElement('div');
+  who.className = 'member-who';
+  var email = document.createElement('div');
+  email.className = 'member-email';
+  email.textContent = member.email;
+  var name = document.createElement('div');
+  name.className = 'member-name';
+  name.textContent = (member.display_name || '') + (isSelf ? '（你自己）' : '');
+  who.appendChild(email);
+  who.appendChild(name);
+
+  var picker = document.createElement('select');
+  picker.setAttribute('aria-label', member.email + ' 嘅權限');
+  ASSIGNABLE_ROLES.forEach(function(role){
+    var option = document.createElement('option');
+    option.value = role;
+    option.textContent = ROLE_LABEL[role];
+    picker.appendChild(option);
+  });
+  picker.value = isPending ? 'staff' : member.role;
+  /* 自己嗰行淨係睇得唔改得：管理人一撳「親友」或者「移除」就冇人批得人，
+     App 層零退路（要返 Supabase SQL Editor 救，見 SETUP.md 撞板急救）。 */
+  picker.disabled = isSelf;
+
+  var action = null;
+  if(!isSelf){
+    action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'ghost';
+    action.textContent = isPending ? '批准' : '移除';
+  }
+
+  picker.addEventListener('change', async function(){
+    if(isPending) return;   /* 未批准嘅要撳「批准」先落 DB */
+    try{
+      await store.setMemberRole(member.id, picker.value);
+      elMembersNote.textContent = member.email + ' 改為' + ROLE_LABEL[picker.value] + '。';
+    }catch(error){
+      elMembersNote.textContent = '改唔到：' + error.message;
+    }
+  });
+
+  if(action) action.addEventListener('click', async function(){
+    action.disabled = true;
+    try{
+      if(isPending){
+        await store.setMemberRole(member.id, picker.value);
+        elMembersNote.textContent = '已批准 ' + member.email + '，權限：' + ROLE_LABEL[picker.value] + '。';
+      }else{
+        await store.removeMember(member.id);
+        elMembersNote.textContent = '已移除 ' + member.email + '。';
+      }
+      await renderMembers();
+    }catch(error){
+      elMembersNote.textContent = '做唔到：' + error.message;
+      action.disabled = false;
+    }
+  });
+
+  li.appendChild(who);
+  li.appendChild(picker);
+  if(action) li.appendChild(action);
+  return li;
+}
+
+async function renderMembers(){
+  var members;
+  try{
+    members = await store.listMembers();
+  }catch(error){
+    elMembersNote.textContent = '攞唔到成員名單：' + error.message;
+    return;
+  }
+  var waiting = members.filter(function(m){ return m.role === 'pending'; });
+  var active = members.filter(function(m){ return m.role !== 'pending'; });
+
+  elPendingEmpty.hidden = waiting.length > 0;
+  elPendingList.hidden = waiting.length === 0;
+  elPendingList.textContent = '';
+  waiting.forEach(function(m){ elPendingList.appendChild(makeMemberRow(m)); });
+
+  elMemberList.textContent = '';
+  active.forEach(function(m){ elMemberList.appendChild(makeMemberRow(m)); });
+}
+
+/* ══ L5：本機舊數一次過匯入（淨係管理人，淨係問一次） ══ */
+
+var OLD_RECORDS_KEY = 'household-ledger-records';
+var OLD_THRESHOLDS_KEY = 'household-ledger-thresholds';
+var MIGRATED_KEY = 'household-ledger-migrated:' + SUPABASE_URL;
+
+function readOldLocal(key, isArray){
+  try{
+    var raw = JSON.parse(localStorage.getItem(key));
+    if(isArray) return Array.isArray(raw) ? raw : [];
+    return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  }catch(e){ return isArray ? [] : {}; }
+}
+
+function maybeOfferMigration(){
+  if(!can('manage')) return;
+  if(localStorage.getItem(MIGRATED_KEY)) return;
+  var old = readOldLocal(OLD_RECORDS_KEY, true);
+  if(old.length === 0) return;
+  elMigrateCopy.textContent = '呢部機仲有 ' + old.length +
+    ' 筆舊紀錄（未接 Supabase 之前存喺瀏覽器嗰啲）。要唔要一次過搬上去，令屋企其他人都見到？';
+  elMigrateBanner.hidden = false;
+}
+
+document.getElementById('migrateRun').addEventListener('click', async function(){
+  var button = this;
+  var old = readOldLocal(OLD_RECORDS_KEY, true);
+  var oldThresholds = readOldLocal(OLD_THRESHOLDS_KEY, false);
+  var existing = Object.create(null);
+  cache.records.forEach(function(r){ existing[r.id] = true; });
+  var incoming = old.filter(function(r){ return r && r.id && !existing[r.id]; })
+    .map(function(r){
+      return { id:r.id, name:r.name, kind:r.kind, qty:Number(r.qty), amount:Number(r.amount) || 0, date:r.date };
+    });
+
+  button.disabled = true;
+  elMigrateCopy.textContent = '搬緊 ' + incoming.length + ' 筆⋯⋯';
+  try{
+    if(incoming.length) await store.addRecords(incoming);
+    await store.setThresholds(oldThresholds);
+    await store.loadAll();          /* 重攞一次，次序跟返 DB 嘅 seq */
+    localStorage.setItem(MIGRATED_KEY, new Date().toISOString());
+    elMigrateBanner.hidden = true;
+    render();
+  }catch(error){
+    elMigrateCopy.textContent = '搬唔到（' + error.message + '）。本機嗰份冇郁過，可以再試。';
+    button.disabled = false;
+  }
+});
+
+document.getElementById('migrateSkip').addEventListener('click', function(){
+  localStorage.setItem(MIGRATED_KEY, 'skipped');
+  elMigrateBanner.hidden = true;
+});
+
+/* ══ L5：登入 ══ */
+
+async function handleSignedIn(user){
+  /* 一律細楷：members 全表都係細楷存（schema.sql 個 lower unique index +
+     seed 嗰句 lower()），所以對得返。唔用 ilike —— ilike 係 pattern match，
+     email 入面嘅 `_` `%` 會當通配符，撞中第二行就 maybeSingle() 報錯，
+     管理人反而卡死喺「等緊批准」。 */
+  state.email = (user.email || '').toLowerCase();
+  state.name = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
+
+  var member = null;
+  try{
+    member = unwrap(await sb.from('members').select('*').eq('email', state.email).maybeSingle());
+    if(!member){
+      /* 第一次入嚟嘅生人：自己開一行 pending 排隊。
+         RLS 只准開自己 email 而且 role 一定係 pending，自封唔到 admin。 */
+      var insert = await sb.from('members').insert({
+        email: state.email,
+        display_name: state.name || state.email,
+        role: 'pending'
+      });
+      if(insert.error && insert.error.code !== '23505') console.warn('登記排隊失敗。', insert.error.message);
+      member = unwrap(await sb.from('members').select('*').eq('email', state.email).maybeSingle());
+    }
+  }catch(error){
+    console.error('攞唔到成員資料。', error);
+  }
+
+  state.role = (member && member.role) || 'pending';
+  if(!can('read')){
+    elPendingCopy.textContent = state.email + ' 未有權限。同管理人講聲，佢喺「成員管理」批准你之後撳下面再試。';
+    showPane('pending');
+    return;
+  }
+
+  applyRole();
+  try{
+    await store.loadAll();
+  }catch(error){
+    showError('攞唔到紀錄：' + error.message);
+  }
+  render();
+  setView('ledger');
+  showPane('app');
+  maybeOfferMigration();
+}
+
+document.getElementById('googleLogin').addEventListener('click', async function(){
+  elLoginNote.textContent = '轉去 Google⋯⋯';
+  var result = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href.split('#')[0] }
+  });
+  if(result.error) elLoginNote.textContent = '登入失敗：' + result.error.message;
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function(){ sb.auth.signOut(); });
+document.getElementById('pendingLogout').addEventListener('click', function(){ sb.auth.signOut(); });
+document.getElementById('pendingRecheck').addEventListener('click', async function(){
+  var session = (await sb.auth.getSession()).data.session;
+  if(session && session.user) await handleSignedIn(session.user);
+  else showPane('login');
+});
+
+elNavLedger.addEventListener('click', function(){ setView('ledger'); });
+elNavMembers.addEventListener('click', function(){ setView('members'); });
+
+/* ══ 開機 ══ */
+
+function configured(){
+  return SUPABASE_URL.indexOf('PASTE_') === -1 && SUPABASE_URL.indexOf('http') === 0 &&
+         SUPABASE_KEY.indexOf('PASTE_') === -1 && SUPABASE_KEY !== '';
+}
+
+/* onAuthStateChange 一 subscribe 就即刻派一次 INITIAL_SESSION，
+   會同下面 getSession() 撞單。認住上次處理過邊個 user，唔好做多次。 */
+var lastHandledUser = null;
+
+async function boot(){
+  if(!configured()){ showPane('setup'); return; }
+
+  if(!window.supabase){
+    showPane('login');
+    elLoginNote.textContent = '載入唔到 supabase-js（CDN 俾人擋咗或者冇網絡）。';
+    return;
+  }
+
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  if(window.location.protocol === 'file:'){
+    elLoginNote.textContent = 'Google 登入唔支援 file:// 開檔。喺呢個資料夾行 python -m http.server 8000，再開 http://localhost:8000。';
+  }
+
+  sb.auth.onAuthStateChange(function(event, session){
+    if(!session || !session.user){ lastHandledUser = null; showPane('login'); return; }
+    if(session.user.id !== lastHandledUser){
+      lastHandledUser = session.user.id;
+      handleSignedIn(session.user);
+    }
+  });
+
+  var session = (await sb.auth.getSession()).data.session;
+  if(session && session.user){
+    if(session.user.id !== lastHandledUser){
+      lastHandledUser = session.user.id;
+      await handleSignedIn(session.user);
+    }
+  }else{
+    showPane('login');
+  }
+}
+
+boot();
 
 /* ══ 自己驗自己：喺 Console 打 selfCheck() ══ */
 function selfCheck(){
@@ -711,6 +1295,10 @@ function selfCheck(){
   assert(warningTextFor(0, 1) === '用完咗', '剩 0 應該出「用完咗」，唔係「就快用完」');
   assert(warningTextFor(-2, 1) === '數對唔上', '剩負數應該出「數對唔上」');
   assert(warningTextFor(0, null) === null, '未設門檻嗰陣唔應該出紅字');
+
+  /* 8 · 未貼 key 唔准靜靜雞當接通咗 */
+  assert(configured() === false || SUPABASE_URL.indexOf('PASTE_') === -1,
+    'placeholder 未換就唔應該當接通咗');
 
   if(fails.length){
     fails.forEach(function(m){ console.error('selfCheck 唔過：' + m); });

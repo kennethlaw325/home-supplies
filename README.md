@@ -1,8 +1,16 @@
 # 屋企日用品計算器 v1
 
+> ⚠️ **你而家喺 `supabase-l5` branch。** 呢個 branch 將本機 localStorage 換咗做
+> Supabase 後端 ＋ Google 登入 ＋ 四級角色（管理人／店員／親友／等批准）。
+> 計數嗰層（買咗／用咗／仲剩／低量紅字／本月使費）一行都冇改 —— A1-A8 照樣成立；
+> **A9 入面「唔連網上 library」同「冇登入／帳號」兩句，喺呢個 branch 特登唔再成立**。
+> 接後端嘅逐格步驟：[`SETUP.md`](SETUP.md)。權限層點驗：`tests/`（`cd tests && npm install && npm test`）。
+> 未貼 key 之前開個檔，會出「backend 未接」設定提示頁，唔會退返去本機儲存。
+
 Dot.ai Codex 課程 Level 3 Day 1 堂上砌嘅實物。虛構 client 陳生（四人家庭）想管理屋企日用品：入到「買咗／用咗」、每樣嘢睇到仲剩幾多同本月使咗幾多錢、數量低過門檻會出紅字。
 
-單一 `index.html`，冇外部檔、冇網上 library、冇後端，資料存喺瀏覽器嘅 localStorage。
+仍然係單一 `index.html`（冇 build step、冇 framework），但呢個 branch 由 CDN 載 `supabase-js`，
+資料存喺 Supabase 個 Postgres，權限由資料庫嗰層嘅 RLS policy 擋。
 
 ![屋企日用品計算器](screenshot.png)
 
@@ -11,7 +19,8 @@ Dot.ai Codex 課程 Level 3 Day 1 堂上砌嘅實物。虛構 client 陳生（�
 1. 電腦：`index.html` double-click 或者拖入瀏覽器就開到。
 2. 電話：將 `index.html` 送去電話開；或者放上 GitHub Pages（main branch 根目錄），用 `https://你個 GitHub 名.github.io/home-supplies/` 開。
 
-紀錄存喺開嗰部機、嗰個瀏覽器、嗰個網址底下。換部機或者換咗個網址開，係空清單，唔係 bug。
+紀錄存喺 Supabase，唔再綁住部機。換部機、換瀏覽器，登入返同一個 Google 帳戶就見到同一盤數
+（見唔到就多數係未接通後端，或者你嗰個帳戶仲喺「等緊批准」）。
 
 ## 驗收條件 A1-A9
 
@@ -35,8 +44,11 @@ Dot.ai Codex 課程 Level 3 Day 1 堂上砌嘅實物。虛構 client 陳生（�
 selfCheck 全過
 ```
 
-七個 assert 分別驗：買 10 用 3 剩 7、$0.10 + $0.20 = $0.30、上個月嗰筆唔計入本月使費，同埋四個紅字邊界（啱啱等於門檻、剩 0、剩負數、未設門檻）。
+八個 assert 分別驗：買 10 用 3 剩 7、$0.10 + $0.20 = $0.30、上個月嗰筆唔計入本月使費、四個紅字邊界（啱啱等於門檻、剩 0、剩負數、未設門檻），第 8 條驗 Supabase 個 URL／key 仲係 `PASTE_...` placeholder 嗰陣唔准當接通咗。
+
+權限層唔喺 `selfCheck()` 入面，係喺資料庫嗰層：`cd tests && npm install && npm test`。
 
 ## 唔會做嘅嘢
 
-登入／帳號、貨幣選擇、push notification。呢三樣係 client 剔走咗，唔係漏咗。
+貨幣選擇、push notification —— 呢兩樣係 client 剔走咗，唔係漏咗。
+登入／帳號本來都喺呢個名單（見 A9），但呢個 `supabase-l5` branch 特登加返：Google 登入 + 四級角色。
